@@ -26,6 +26,10 @@ from torch.utils.tensorboard import SummaryWriter
 from nltk.translate.bleu_score import corpus_bleu
 from nltk.translate.bleu_score import SmoothingFunction
 
+import nltk
+nltk.download('punkt')
+from nltk.tokenize import word_tokenize
+from nltk.translate.bleu_score import corpus_bleu
 
 
 import collections
@@ -199,22 +203,29 @@ def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, 
         print_msg(f"Validation BLEU_corprus: {blue_corprus}")
         writer.flush()
 
-    if predicted:
-        print_msg(f"Data type of elements in 'predicted': {type(predicted[0])}")
-    else:
-        print_msg("The 'predicted' list is empty.")
 
-    if expected:
-        print_msg(f"Data type of elements in 'expected': {type(expected[0])}")
-    else:
-        print_msg("The 'expected' list is empty.")
+    predicted_tokens = [word_tokenize(sent, language='portuguese') for sent in predicted]
+    expected_tokens = [[word_tokenize(sent, language='portuguese')] for sent in expected]  # Expected references wrapped in another list
 
-    # Print the entire 'predicted' and 'expected' lists
-    print_msg('Predicted Outputs:')
-    print(predicted)
+    # Calculate BLEU score
+    bleu_score = corpus_bleu(expected_tokens, predicted_tokens)
+    print(f"BLEU Score: {bleu_score}")
+    # if predicted:
+    #     print_msg(f"Data type of elements in 'predicted': {type(predicted[0])}")
+    # else:
+    #     print_msg("The 'predicted' list is empty.")
 
-    print_msg('Expected Outputs:')
-    print(expected)
+    # if expected:
+    #     print_msg(f"Data type of elements in 'expected': {type(expected[0])}")
+    # else:
+    #     print_msg("The 'expected' list is empty.")
+
+    # # Print the entire 'predicted' and 'expected' lists
+    # print_msg('Predicted Outputs:')
+    # print(predicted)
+
+    # print_msg('Expected Outputs:')
+    # print(expected)
 
 def get_all_sentences(ds, lang):
     for item in ds:
@@ -350,7 +361,7 @@ def train_model(config):
 
             global_step += 1
         
-        if epoch == 3:
+        if epoch == 49:
         # Run validation at the end of every epoch
             run_validation(model, val_dataloader, tokenizer_src, tokenizer_tgt, config['seq_len'], device, lambda msg: batch_iterator.write(msg), global_step, writer)
         # Save the model at the end of every epoch
