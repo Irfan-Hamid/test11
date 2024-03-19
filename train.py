@@ -156,11 +156,15 @@ def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, 
             target_text = batch["tgt_text"][0]
             model_out_text = tokenizer_tgt.decode(model_out.detach().cpu().numpy())
 
+            
+           
             source_texts.append(source_text)
             expected.append(target_text)
             predicted.append(model_out_text)
             
-
+            print(predicted)
+            print(expected)
+            
             if counter in indices_to_print:
             # Print the source, target and model output
                 print_msg('-'*console_width)
@@ -339,7 +343,7 @@ def train_model(config):
 
             global_step += 1
         
-        if epoch == 49:
+        if epoch == 1:
         # Run validation at the end of every epoch
             run_validation(model, val_dataloader, tokenizer_src, tokenizer_tgt, config['seq_len'], device, lambda msg: batch_iterator.write(msg), global_step, writer)
         # Save the model at the end of every epoch
