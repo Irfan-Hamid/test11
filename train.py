@@ -121,16 +121,13 @@ def greedy_decode(model, source, source_mask, tokenizer_src, tokenizer_tgt, max_
     return decoder_input.squeeze(0)
 
 
-def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, device, print_msg, global_step, writer):
+def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, device, print_msg, global_step, writer,num_examples=2):
     model.eval()
+    count = 0
 
     source_texts = []
     expected = []
     predicted = []
-
-    # Indices of examples to print - first, middle, and last
-    indices_to_print = [0, len(validation_ds) // 2, len(validation_ds) // 10, len(validation_ds) // 30,len(validation_ds) // 50, len(validation_ds) - 1]
-    counter = 0  # Manual counter to keep track of the current index
 
     try:
         # get the console window width
@@ -143,6 +140,7 @@ def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, 
 
     with torch.no_grad():
         for batch in validation_ds:
+            count += 1
             encoder_input = batch["encoder_input"].to(device) # (b, seq_len)
             encoder_mask = batch["encoder_mask"].to(device) # (b, 1, 1, seq_len)
 
@@ -156,27 +154,19 @@ def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, 
             target_text = batch["tgt_text"][0]
             model_out_text = tokenizer_tgt.decode(model_out.detach().cpu().numpy())
 
-            
-           
             source_texts.append(source_text)
             expected.append(target_text)
             predicted.append(model_out_text)
             
-            print(predicted)
-            print(expected)
-            
-            if counter in indices_to_print:
             # Print the source, target and model output
-                print_msg('-'*console_width)
-                print_msg(f"{f'SOURCE: ':>12}{source_text}")
-                print_msg(f"{f'TARGET: ':>12}{target_text}")
-                print_msg(f"{f'PREDICTED: ':>12}{model_out_text}")
+            print_msg('-'*console_width)
+            print_msg(f"{f'SOURCE: ':>12}{source_text}")
+            print_msg(f"{f'TARGET: ':>12}{target_text}")
+            print_msg(f"{f'PREDICTED: ':>12}{model_out_text}")
 
-            # if count == num_examples:
-            #     print_msg('-'*console_width)
-            #     break
-    
-            counter += 1  # Increment the manual counter
+            if count == num_examples:
+                print_msg('-'*console_width)
+                break
 
     if writer:
         # Evaluate the character error rate
@@ -208,6 +198,23 @@ def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, 
         writer.add_scalar('validation BLEU_corprus', blue_corprus, global_step)
         print_msg(f"Validation BLEU_corprus: {blue_corprus}")
         writer.flush()
+
+    if predicted:
+        print_msg(f"Data type of elements in 'predicted': {type(predicted[0])}")
+    else:
+        print_msg("The 'predicted' list is empty.")
+
+    if expected:
+        print_msg(f"Data type of elements in 'expected': {type(expected[0])}")
+    else:
+        print_msg("The 'expected' list is empty.")
+
+    # Print the entire 'predicted' and 'expected' lists
+    print_msg('Predicted Outputs:')
+    print(predicted)
+
+    print_msg('Expected Outputs:')
+    print(expected)
 
 def get_all_sentences(ds, lang):
     for item in ds:
