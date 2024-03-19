@@ -31,6 +31,16 @@ nltk.download('punkt')
 from nltk.tokenize import word_tokenize
 from nltk.translate.bleu_score import corpus_bleu
 
+import nltk
+nltk.download('punkt')
+from nltk.tokenize import word_tokenize
+from nltk.translate.bleu_score import corpus_bleu
+from nltk.translate.meteor_score import meteor_score
+nltk.download('wordnet')
+from rouge import Rouge 
+from jiwer import cer, wer
+
+
 
 import collections
 import math
