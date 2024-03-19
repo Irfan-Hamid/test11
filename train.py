@@ -38,8 +38,8 @@ from nltk.translate.bleu_score import corpus_bleu
 from nltk.translate.meteor_score import meteor_score
 nltk.download('wordnet')
 from rouge import Rouge 
-from jiwer import cer, wer
-
+from jiwer import cer
+from jiwer import cer
 
 
 import collections
@@ -395,7 +395,7 @@ def train_model(config):
 
             global_step += 1
         
-        if epoch == 49:
+        if epoch == 99:
         # Run validation at the end of every epoch
             run_validation(model, val_dataloader, tokenizer_src, tokenizer_tgt, config['seq_len'], device, lambda msg: batch_iterator.write(msg), global_step, writer)
         # Save the model at the end of every epoch
