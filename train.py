@@ -144,7 +144,7 @@ def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, 
 
 
     # Indices of examples to print - first, middle, and last
-    indices_to_print = [0, len(validation_ds) // 2, len(validation_ds) // 10, len(validation_ds) // 30,len(validation_ds) // 50, len(validation_ds) - 1]
+    indices_to_print = [0, len(validation_ds) // 2, len(validation_ds) // 10, len(validation_ds) - 1]
     counter = 0  # Manual counter to keep track of the current index
 
     try:
@@ -395,7 +395,7 @@ def train_model(config):
 
             global_step += 1
         
-        if epoch == 99:
+        if epoch == 199:
         # Run validation at the end of every epoch
             run_validation(model, val_dataloader, tokenizer_src, tokenizer_tgt, config['seq_len'], device, lambda msg: batch_iterator.write(msg), global_step, writer)
         # Save the model at the end of every epoch
