@@ -288,6 +288,7 @@ def train_model(config):
 
     # If the user specified a model to preload before training, load it
     initial_epoch = 0
+    count_epoch = 2
     global_step = 0
     preload = config['preload']
     model_filename = latest_weights_file_path(config) if preload == 'latest' else get_weights_file_path(config, preload) if preload else None
@@ -339,7 +340,7 @@ def train_model(config):
 
             global_step += 1
 
-        if(epoch>=2):
+        if(count_epoch>=2):
         # Run validation at the end of every epoch
             run_validation(model, val_dataloader, tokenizer_src, tokenizer_tgt, config['seq_len'], device, lambda msg: batch_iterator.write(msg), global_step, writer)
         # Save the model at the end of every epoch
