@@ -121,13 +121,16 @@ def greedy_decode(model, source, source_mask, tokenizer_src, tokenizer_tgt, max_
     return decoder_input.squeeze(0)
 
 
-def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, device, print_msg, global_step, writer, num_examples=2):
+def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, device, print_msg, global_step, writer):
     model.eval()
-    count = 0
 
     source_texts = []
     expected = []
     predicted = []
+
+    # Indices of examples to print - first, middle, and last
+    indices_to_print = [0, len(validation_ds) // 2, len(validation_ds) // 10, len(validation_ds) // 30,len(validation_ds) // 50, len(validation_ds) - 1]
+    counter = 0  # Manual counter to keep track of the current index
 
     try:
         # get the console window width
@@ -158,16 +161,20 @@ def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, 
             expected.append(target_text)
             predicted.append(model_out_text)
             
-            # Print the source, target and model output
-            print_msg('-'*console_width)
-            print_msg(f"{f'SOURCE: ':>12}{source_text}")
-            print_msg(f"{f'TARGET: ':>12}{target_text}")
-            print_msg(f"{f'PREDICTED: ':>12}{model_out_text}")
 
-            if count == num_examples:
+            if counter in indices_to_print:
+            # Print the source, target and model output
                 print_msg('-'*console_width)
-                break
+                print_msg(f"{f'SOURCE: ':>12}{source_text}")
+                print_msg(f"{f'TARGET: ':>12}{target_text}")
+                print_msg(f"{f'PREDICTED: ':>12}{model_out_text}")
+
+            # if count == num_examples:
+            #     print_msg('-'*console_width)
+            #     break
     
+            counter += 1  # Increment the manual counter
+
     if writer:
         # Evaluate the character error rate
         # Compute the char error rate 
