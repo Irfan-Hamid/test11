@@ -294,8 +294,6 @@ def get_ds(config):
     train_ds = BilingualDataset(train_ds_raw, tokenizer_src, tokenizer_tgt, config['lang_src'], config['lang_tgt'], config['seq_len'])
     val_ds = BilingualDataset(val_ds_raw, tokenizer_src, tokenizer_tgt, config['lang_src'], config['lang_tgt'], config['seq_len'])
 
-
-    
     # Find the maximum length of each sentence in the source and target sentence
     max_len_src = 0
     max_len_tgt = 0
@@ -397,7 +395,7 @@ def train_model(config):
 
             global_step += 1
         
-        if epoch == 199:
+        if epoch == 49:
         # Run validation at the end of every epoch
             run_validation(model, val_dataloader, tokenizer_src, tokenizer_tgt, config['seq_len'], device, lambda msg: batch_iterator.write(msg), global_step, writer)
         # Save the model at the end of every epoch
