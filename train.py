@@ -23,6 +23,73 @@ from tokenizers.pre_tokenizers import Whitespace
 import torchmetrics
 from torch.utils.tensorboard import SummaryWriter
 
+from nltk.translate.bleu_score import corpus_bleu
+from nltk.translate.bleu_score import SmoothingFunction
+
+
+
+import collections
+import math
+import numpy as np
+from collections import Counter
+
+def calculate_corpus_bleu(references, predictions):
+    # Tokenize the sentences into words
+    references_tokenized = [[ref.split()] for ref in references]  # Each reference wrapped in another list
+    predictions_tokenized = [pred.split() for pred in predictions]
+    
+    # Calculate the corpus BLEU score
+    score = corpus_bleu(references_tokenized, predictions_tokenized, smoothing_function=SmoothingFunction().method1)
+    
+    return score
+
+
+def n_gram_counts(text, n):
+    # Generate n-grams from the given text and convert them to tuples
+    return [tuple(word.lower() for word in text[i:i+n]) for i in range(len(text)-n+1)]
+
+def modified_precision(predicted, expected, n):
+    predicted_ngrams = n_gram_counts(predicted, n)
+    expected_ngrams = n_gram_counts(expected, n)
+    expected_ngrams_count = {ngram: expected_ngrams.count(ngram) for ngram in set(expected_ngrams)}
+    
+    match_count = 0
+    for ngram in predicted_ngrams:
+        if ngram in expected_ngrams_count and expected_ngrams_count[ngram] > 0:
+            match_count += 1
+            expected_ngrams_count[ngram] -= 1
+            
+    return match_count / len(predicted_ngrams) if predicted_ngrams else 0
+
+def brevity_penalty(predicted, expected):
+    predicted_length = len(predicted)
+    expected_length = len(expected)
+    if predicted_length > expected_length:
+        return 1
+    else:
+        return math.exp(1 - expected_length / predicted_length) if predicted_length else 0
+
+def calculate_bleu(predicted_whole, expected, n_gram=4):
+    weights = [1.0 / n_gram] * n_gram  # Equal weights for all n-grams
+    bp = brevity_penalty(' '.join(predicted_whole), ' '.join(expected))
+
+    p_ns = []
+    for predicted, exp in zip(predicted_whole, expected):
+        p_n = [modified_precision(predicted.split(), exp.split(), i+1) for i in range(n_gram)]
+        p_ns.append(p_n)
+    
+    # Calculate geometric mean of the precisions for each sentence and then average them
+    bleu_scores = []
+    for p_n in p_ns:
+        s = [w_i * math.log(p_i) for w_i, p_i in zip(weights, p_n) if p_i]
+        if s:  # Check to avoid math domain error if s is empty
+            bleu_score = bp * math.exp(sum(s))
+            bleu_scores.append(bleu_score)
+
+    # Return the average BLEU score across all the sentences
+    return sum(bleu_scores) / len(bleu_scores) if bleu_scores else 0
+
+
 def greedy_decode(model, source, source_mask, tokenizer_src, tokenizer_tgt, max_len, device):
     sos_idx = tokenizer_tgt.token_to_id('[SOS]')
     eos_idx = tokenizer_tgt.token_to_id('[EOS]')
@@ -115,10 +182,21 @@ def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, 
         writer.add_scalar('validation wer', wer, global_step)
         writer.flush()
 
-        # Compute the BLEU metric
-        metric = torchmetrics.BLEUScore()
-        bleu = metric(predicted, expected)
-        writer.add_scalar('validation BLEU', bleu, global_step)
+        # # Compute the BLEU metric
+        # metric = torchmetrics.BLEUScore()
+        # bleu = metric(predicted, expected)
+        # writer.add_scalar('validation BLEU', bleu, global_step)
+        # writer.flush()
+
+        bleu_custom2 = calculate_bleu(predicted, expected)
+        writer.add_scalar('validation BLEU_custom', bleu_custom2, global_step)
+        print_msg(f"Validation BLEU_custom: {bleu_custom2}")
+        writer.flush()
+
+
+        blue_corprus=calculate_corpus_bleu(predicted, expected)
+        writer.add_scalar('validation BLEU_corprus', blue_corprus, global_step)
+        print_msg(f"Validation BLEU_corprus: {blue_corprus}")
         writer.flush()
 
 def get_all_sentences(ds, lang):
