@@ -135,13 +135,17 @@ def greedy_decode(model, source, source_mask, tokenizer_src, tokenizer_tgt, max_
     return decoder_input.squeeze(0)
 
 
-def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, device, print_msg, global_step, writer,num_examples=2):
+def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, device, print_msg, global_step, writer):
     model.eval()
-    count = 0
 
     source_texts = []
     expected = []
     predicted = []
+
+
+    # Indices of examples to print - first, middle, and last
+    indices_to_print = [0, len(validation_ds) // 2, len(validation_ds) // 10, len(validation_ds) // 30,len(validation_ds) // 50, len(validation_ds) - 1]
+    counter = 0  # Manual counter to keep track of the current index
 
     try:
         # get the console window width
@@ -154,7 +158,6 @@ def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, 
 
     with torch.no_grad():
         for batch in validation_ds:
-            count += 1
             encoder_input = batch["encoder_input"].to(device) # (b, seq_len)
             encoder_mask = batch["encoder_mask"].to(device) # (b, 1, 1, seq_len)
 
@@ -172,15 +175,15 @@ def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, 
             expected.append(target_text)
             predicted.append(model_out_text)
             
-            # Print the source, target and model output
-            print_msg('-'*console_width)
-            print_msg(f"{f'SOURCE: ':>12}{source_text}")
-            print_msg(f"{f'TARGET: ':>12}{target_text}")
-            print_msg(f"{f'PREDICTED: ':>12}{model_out_text}")
+            if counter in indices_to_print:
+                print_msg('-' * console_width)
+                print_msg(f"Validation Example {counter + 1}")
+                print_msg(f"{f'SOURCE: ':>12}{source_text}")
+                print_msg(f"{f'TARGET: ':>12}{target_text}")
+                print_msg(f"{f'PREDICTED: ':>12}{model_out_text}")
+                print_msg('-' * console_width)
 
-            if count == num_examples:
-                print_msg('-'*console_width)
-                break
+            counter += 1  # Increment the manual counter
 
     if writer:
         # Evaluate the character error rate
@@ -392,7 +395,7 @@ def train_model(config):
 
             global_step += 1
         
-        if epoch == 2:
+        if epoch == 50:
         # Run validation at the end of every epoch
             run_validation(model, val_dataloader, tokenizer_src, tokenizer_tgt, config['seq_len'], device, lambda msg: batch_iterator.write(msg), global_step, writer)
         # Save the model at the end of every epoch
