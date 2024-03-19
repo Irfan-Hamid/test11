@@ -177,13 +177,13 @@ def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, 
         # Compute the char error rate 
         metric = torchmetrics.CharErrorRate()
         cer = metric(predicted, expected)
-        writer.add_scalar('validation cer', cer, global_step)
+        writer.add_scalar('validation cer_wrong', cer, global_step)
         writer.flush()
 
         # Compute the word error rate
         metric = torchmetrics.WordErrorRate()
         wer = metric(predicted, expected)
-        writer.add_scalar('validation wer', wer, global_step)
+        writer.add_scalar('validation wer_wrong', wer, global_step)
         writer.flush()
 
         # # Compute the BLEU metric
@@ -194,13 +194,13 @@ def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, 
 
         bleu_custom2 = calculate_bleu(predicted, expected)
         writer.add_scalar('validation BLEU_custom', bleu_custom2, global_step)
-        print_msg(f"Validation BLEU_custom: {bleu_custom2}")
+        print_msg(f"Validation BLEU_custom_wrong: {bleu_custom2}")
         writer.flush()
 
 
         blue_corprus=calculate_corpus_bleu(predicted, expected)
         writer.add_scalar('validation BLEU_corprus', blue_corprus, global_step)
-        print_msg(f"Validation BLEU_corprus: {blue_corprus}")
+        print_msg(f"Validation BLEU_corprus_wrong: {blue_corprus}")
         writer.flush()
 
 
@@ -209,7 +209,28 @@ def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, 
 
     # Calculate BLEU score
     bleu_score = corpus_bleu(expected_tokens, predicted_tokens)
-    print(f"BLEU Score: {bleu_score}")
+    print(f"BLEU Score_correct: {bleu_score}")
+
+    tokenized_predicted = [word_tokenize(sentence, language='portuguese') for sentence in predicted]
+    tokenized_expected = [word_tokenize(sentence, language='portuguese') for sentence in expected]
+
+    # Calculate METEOR for each pair and take the average
+    meteor_scores = [meteor_score([ref], pred) for ref, pred in zip(tokenized_expected, tokenized_predicted)]
+    average_meteor = sum(meteor_scores) / len(meteor_scores)
+
+    print(f"Average METEOR Score_correct: {average_meteor}")
+
+    rouge = Rouge()
+    scores = rouge.get_scores(predicted,expected, avg=True)
+    print("ROUGE scores_correct:", scores)
+
+    cer_scores = [cer(reference, prediction) for reference, prediction in zip(expected, predicted)]
+    average_cer = sum(cer_scores) / len(cer_scores)
+    print(f"CER_correct: {average_cer}")
+
+    wer_scores = [wer(reference, prediction) for reference, prediction in zip(expected, predicted)]
+    average_wer = sum(wer_scores) / len(wer_scores)
+    print(f"WER_correct: {average_wer}")
     # if predicted:
     #     print_msg(f"Data type of elements in 'predicted': {type(predicted[0])}")
     # else:
@@ -361,7 +382,7 @@ def train_model(config):
 
             global_step += 1
         
-        if epoch == 49:
+        if epoch == 2:
         # Run validation at the end of every epoch
             run_validation(model, val_dataloader, tokenizer_src, tokenizer_tgt, config['seq_len'], device, lambda msg: batch_iterator.write(msg), global_step, writer)
         # Save the model at the end of every epoch
