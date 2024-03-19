@@ -47,6 +47,8 @@ import math
 import numpy as np
 from collections import Counter
 
+import sacrebleu
+
 def calculate_corpus_bleu(references, predictions):
     # Tokenize the sentences into words
     references_tokenized = [[ref.split()] for ref in references]  # Each reference wrapped in another list
@@ -210,12 +212,18 @@ def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, 
         print_msg(f"Validation BLEU_custom_wrong: {bleu_custom2}")
         writer.flush()
 
+        # For BLEU Score, wrap each target sentence in a list
+        expected_for_bleu = [[exp] for exp in expected]
 
         blue_corprus=calculate_corpus_bleu(predicted, expected)
         writer.add_scalar('validation BLEU_corprus', blue_corprus, global_step)
         print_msg(f"Validation BLEU_corprus_wrong: {blue_corprus}")
         writer.flush()
 
+        # Calculate BLEU score
+        bleu = sacrebleu.corpus_bleu(predicted, expected_for_bleu)
+        print(f"BLEU score1: {bleu.score:.2f}")
+        print(f"Full report:\n{bleu}")
 
     predicted_tokens = [word_tokenize(sent, language='portuguese') for sent in predicted]
     expected_tokens = [[word_tokenize(sent, language='portuguese')] for sent in expected]  # Expected references wrapped in another list
