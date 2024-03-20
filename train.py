@@ -58,7 +58,7 @@ def set_seed(seed_value):
     torch.backends.cudnn.benchmark = False
 
 # Set a fixed value for the seed
-seed_value = 12
+seed_value = 14
 set_seed(seed_value)
 
 
