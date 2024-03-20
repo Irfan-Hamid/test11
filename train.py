@@ -227,10 +227,10 @@ def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, 
         # writer.add_scalar('validation BLEU', bleu, global_step)
         # writer.flush()
 
-        bleu_custom2 = calculate_bleu(predicted, expected)
-        writer.add_scalar('validation BLEU', bleu_custom2, global_step)
-        print_msg(f"Validation BLEU: {bleu_custom2}")
-        writer.flush()
+        # bleu_custom2 = calculate_bleu(predicted, expected)
+        # writer.add_scalar('validation BLEU', bleu_custom2, global_step)
+        # print_msg(f"Validation BLEU: {bleu_custom2}")
+        # writer.flush()
 
         # For BLEU Score, wrap each target sentence in a list
         expected_for_bleu = [[exp] for exp in expected]
@@ -245,12 +245,12 @@ def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, 
         print(f"BLEU score1: {bleu.score:.2f}")
         print(f"Full report:\n{bleu}")
 
-    predicted_tokens = [word_tokenize(sent, language='portuguese') for sent in predicted]
-    expected_tokens = [[word_tokenize(sent, language='portuguese')] for sent in expected]  # Expected references wrapped in another list
+    # predicted_tokens = [word_tokenize(sent, language='portuguese') for sent in predicted]
+    # expected_tokens = [[word_tokenize(sent, language='portuguese')] for sent in expected]  # Expected references wrapped in another list
 
-    # Calculate BLEU score
-    bleu_score = corpus_bleu(expected_tokens, predicted_tokens)
-    print(f"BLEU Score_1: {bleu_score}")
+    # # Calculate BLEU score
+    # bleu_score = corpus_bleu(expected_tokens, predicted_tokens)
+    # print(f"BLEU Score_1: {bleu_score}")
 
     tokenized_predicted = [word_tokenize(sentence, language='portuguese') for sentence in predicted]
     tokenized_expected = [word_tokenize(sentence, language='portuguese') for sentence in expected]
