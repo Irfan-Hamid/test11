@@ -49,62 +49,70 @@ from collections import Counter
 
 import sacrebleu
 
-def calculate_corpus_bleu(references, predictions):
-    # Tokenize the sentences into words
-    references_tokenized = [[ref.split()] for ref in references]  # Each reference wrapped in another list
-    predictions_tokenized = [pred.split() for pred in predictions]
+# def calculate_corpus_bleu(references, predictions):
+#     # Tokenize the sentences into words
+#     references_tokenized = [[ref.split()] for ref in references]  # Each reference wrapped in another list
+#     predictions_tokenized = [pred.split() for pred in predictions]
     
-    # Calculate the corpus BLEU score
-    score = corpus_bleu(references_tokenized, predictions_tokenized, smoothing_function=SmoothingFunction().method1)
+#     # Calculate the corpus BLEU score
+#     score = corpus_bleu(references_tokenized, predictions_tokenized, smoothing_function=SmoothingFunction().method1)
     
-    return score
-
+#     return score
 
 def n_gram_counts(text, n):
-    # Generate n-grams from the given text and convert them to tuples
-    return [tuple(word.lower() for word in text[i:i+n]) for i in range(len(text)-n+1)]
+    tokens = text.split()
+    return [tuple(tokens[i:i+n]) for i in range(len(tokens)-n+1)]
 
 def modified_precision(predicted, expected, n):
     predicted_ngrams = n_gram_counts(predicted, n)
-    expected_ngrams = n_gram_counts(expected, n)
-    expected_ngrams_count = {ngram: expected_ngrams.count(ngram) for ngram in set(expected_ngrams)}
+    # Assuming there's only one expected text per predicted text, we directly pass the first element of expected.
+    expected_ngrams = n_gram_counts(expected[0], n)  # Adjusted to pass a string
     
+    predicted_ngrams_count = Counter(predicted_ngrams)
+    expected_ngrams_count = Counter(expected_ngrams)
+
     match_count = 0
-    for ngram in predicted_ngrams:
-        if ngram in expected_ngrams_count and expected_ngrams_count[ngram] > 0:
-            match_count += 1
-            expected_ngrams_count[ngram] -= 1
-            
-    return match_count / len(predicted_ngrams) if predicted_ngrams else 0
+    for ngram in predicted_ngrams_count:
+        match_count += min(predicted_ngrams_count[ngram], expected_ngrams_count.get(ngram, 0))
+    
+    total_count = len(predicted_ngrams)
+
+    return match_count, total_count
 
 def brevity_penalty(predicted, expected):
-    predicted_length = len(predicted)
-    expected_length = len(expected)
-    if predicted_length > expected_length:
+    predicted_length = len(predicted.split())
+    expected_lengths = [len(e.split()) for e in expected]
+    closest_length = min(expected_lengths, key=lambda ref_len: (abs(ref_len - predicted_length), ref_len))
+    
+    if predicted_length > closest_length:
         return 1
     else:
-        return math.exp(1 - expected_length / predicted_length) if predicted_length else 0
+        return math.exp(1 - closest_length / predicted_length)
 
-def calculate_bleu(predicted_whole, expected, n_gram=4):
-    weights = [1.0 / n_gram] * n_gram  # Equal weights for all n-grams
-    bp = brevity_penalty(' '.join(predicted_whole), ' '.join(expected))
+def calculate_bleu(predicted_corpus, expected_corpus, max_n=4):
+    weights = [1.0 / max_n] * max_n  # Uniform weights for simplicity, can be adjusted
+    p_n = [0] * max_n
+    for i in range(max_n):
+        sum_match_counts = 0
+        sum_total_counts = 0
+        for predicted, expected in zip(predicted_corpus, expected_corpus):
+            match_count, total_count = modified_precision(predicted, [expected], i+1)
+            sum_match_counts += match_count
+            sum_total_counts += total_count
 
-    p_ns = []
-    for predicted, exp in zip(predicted_whole, expected):
-        p_n = [modified_precision(predicted.split(), exp.split(), i+1) for i in range(n_gram)]
-        p_ns.append(p_n)
-    
-    # Calculate geometric mean of the precisions for each sentence and then average them
-    bleu_scores = []
-    for p_n in p_ns:
-        s = [w_i * math.log(p_i) for w_i, p_i in zip(weights, p_n) if p_i]
-        if s:  # Check to avoid math domain error if s is empty
-            bleu_score = bp * math.exp(sum(s))
-            bleu_scores.append(bleu_score)
+        # Smoothing: add 1 to match counts for n-grams with at least one match
+        if sum_match_counts == 0:
+            sum_match_counts = 1
+            sum_total_counts += 1  # Avoid division by zero
+        
+        p_n[i] = sum_match_counts / sum_total_counts
 
-    # Return the average BLEU score across all the sentences
-    return sum(bleu_scores) / len(bleu_scores) if bleu_scores else 0
+    # Calculate brevity penalty and geometric mean of modified precisions
+    bp = sum(brevity_penalty(predicted, [expected]) for predicted, expected in zip(predicted_corpus, expected_corpus)) / len(predicted_corpus)
+    geo_mean = math.exp(sum(weights[i] * math.log(p_n[i]) for i in range(max_n)))
 
+    bleu_score = bp * geo_mean
+    return bleu_score
 
 def greedy_decode(model, source, source_mask, tokenizer_src, tokenizer_tgt, max_len, device):
     sos_idx = tokenizer_tgt.token_to_id('[SOS]')
@@ -146,7 +154,7 @@ def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, 
 
 
     # Indices of examples to print - first, middle, and last
-    indices_to_print = [0, len(validation_ds) // 2, len(validation_ds) // 10, len(validation_ds) - 1]
+    indices_to_print = [0, len(validation_ds) - 1]
     counter = 0  # Manual counter to keep track of the current index
 
     try:
@@ -208,17 +216,17 @@ def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, 
         # writer.flush()
 
         bleu_custom2 = calculate_bleu(predicted, expected)
-        writer.add_scalar('validation BLEU_custom', bleu_custom2, global_step)
-        print_msg(f"Validation BLEU_custom_wrong: {bleu_custom2}")
+        writer.add_scalar('validation BLEU', bleu_custom2, global_step)
+        print_msg(f"Validation BLEU: {bleu_custom2}")
         writer.flush()
 
         # For BLEU Score, wrap each target sentence in a list
         expected_for_bleu = [[exp] for exp in expected]
 
-        blue_corprus=calculate_corpus_bleu(predicted, expected)
-        writer.add_scalar('validation BLEU_corprus', blue_corprus, global_step)
-        print_msg(f"Validation BLEU_corprus_wrong: {blue_corprus}")
-        writer.flush()
+        # blue_corprus=calculate_corpus_bleu(predicted, expected)
+        # writer.add_scalar('validation BLEU_corprus', blue_corprus, global_step)
+        # print_msg(f"Validation BLEU_corprus_wrong: {blue_corprus}")
+        # writer.flush()
 
         # Calculate BLEU score
         bleu = sacrebleu.corpus_bleu(predicted, expected_for_bleu)
@@ -230,7 +238,7 @@ def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, 
 
     # Calculate BLEU score
     bleu_score = corpus_bleu(expected_tokens, predicted_tokens)
-    print(f"BLEU Score_correct: {bleu_score}")
+    print(f"BLEU Score_1: {bleu_score}")
 
     tokenized_predicted = [word_tokenize(sentence, language='portuguese') for sentence in predicted]
     tokenized_expected = [word_tokenize(sentence, language='portuguese') for sentence in expected]
@@ -245,14 +253,14 @@ def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, 
     scores = rouge.get_scores(predicted,expected, avg=True)
     print("ROUGE scores_correct:", scores)
 
-    cer_scores = [cer(reference, prediction) for reference, prediction in zip(expected, predicted)]
-    average_cer = sum(cer_scores) / len(cer_scores)
-    print(f"CER_correct: {average_cer}")
+    # cer_scores = [cer(reference, prediction) for reference, prediction in zip(expected, predicted)]
+    # average_cer = sum(cer_scores) / len(cer_scores)
+    # print(f"CER_correct: {average_cer}")
 
-    wer_scores = [wer(reference, prediction) for reference, prediction in zip(expected, predicted)]
-    average_wer = sum(wer_scores) / len(wer_scores)
-    print(f"WER_correct: {average_wer}")
-    # if predicted:
+    # wer_scores = [wer(reference, prediction) for reference, prediction in zip(expected, predicted)]
+    # average_wer = sum(wer_scores) / len(wer_scores)
+    # print(f"WER_correct: {average_wer}")
+    # # if predicted:
     #     print_msg(f"Data type of elements in 'predicted': {type(predicted[0])}")
     # else:
     #     print_msg("The 'predicted' list is empty.")
@@ -289,20 +297,15 @@ def get_or_build_tokenizer(config, ds, lang):
 def get_ds(config):
     # It only has the train split, so we divide it overselves
     ds_raw = load_dataset(f"{config['datasource']}", f"{config['lang_src']}-{config['lang_tgt']}", split='train')
-    # Shuffle the dataset
-    shuffled_indices = np.random.permutation(len(ds_raw))
-    shuffled_ds = ds_raw.select(shuffled_indices)
 
-# Select the first 1.5k rows from the shuffled dataset
-    subset_ds = shuffled_ds.select(range(1500))
     # Build tokenizers
     tokenizer_src = get_or_build_tokenizer(config, ds_raw, config['lang_src'])
     tokenizer_tgt = get_or_build_tokenizer(config, ds_raw, config['lang_tgt'])
- 
+
     # Keep 90% for training, 10% for validation
-    train_ds_size = int(0.9 * len(subset_ds))
-    val_ds_size = len(subset_ds) - train_ds_size
-    train_ds_raw, val_ds_raw = random_split(subset_ds, [train_ds_size, val_ds_size])
+    train_ds_size = int(0.9 * len(ds_raw))
+    val_ds_size = len(ds_raw) - train_ds_size
+    train_ds_raw, val_ds_raw = random_split(ds_raw, [train_ds_size, val_ds_size])
 
     train_ds = BilingualDataset(train_ds_raw, tokenizer_src, tokenizer_tgt, config['lang_src'], config['lang_tgt'], config['seq_len'])
     val_ds = BilingualDataset(val_ds_raw, tokenizer_src, tokenizer_tgt, config['lang_src'], config['lang_tgt'], config['seq_len'])
@@ -311,7 +314,7 @@ def get_ds(config):
     max_len_src = 0
     max_len_tgt = 0
 
-    for item in subset_ds:
+    for item in ds_raw:
         src_ids = tokenizer_src.encode(item['translation'][config['lang_src']]).ids
         tgt_ids = tokenizer_tgt.encode(item['translation'][config['lang_tgt']]).ids
         max_len_src = max(max_len_src, len(src_ids))
