@@ -26,21 +26,16 @@ from torch.utils.tensorboard import SummaryWriter
 from nltk.translate.bleu_score import corpus_bleu
 from nltk.translate.bleu_score import SmoothingFunction
 
-import nltk
-nltk.download('punkt')
 from nltk.tokenize import word_tokenize
 from nltk.translate.bleu_score import corpus_bleu
 
 import nltk
-nltk.download('punkt')
 from nltk.tokenize import word_tokenize
 from nltk.translate.bleu_score import corpus_bleu
 from nltk.translate.meteor_score import meteor_score
-nltk.download('wordnet')
 from rouge import Rouge 
 from jiwer import cer
 from jiwer import cer
-
 
 import collections
 import math
@@ -49,6 +44,23 @@ from collections import Counter
 
 import sacrebleu
 
+def set_seed(seed_value):
+    """Set seed for reproducibility."""
+    random.seed(seed_value)
+    np.random.seed(seed_value)
+    torch.manual_seed(seed_value)
+    torch.cuda.manual_seed_all(seed_value)  # if you are using multi-GPU.
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+# Set a fixed value for the seed
+seed_value = 42
+set_seed(seed_value)
+
+
+nltk.download('punkt')
+nltk.download('wordnet')
+nltk.download('wordnet_ic')
 # def calculate_corpus_bleu(references, predictions):
 #     # Tokenize the sentences into words
 #     references_tokenized = [[ref.split()] for ref in references]  # Each reference wrapped in another list
