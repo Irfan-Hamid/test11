@@ -90,8 +90,8 @@ def causal_mask(size):
     return mask == 0
 
 def diagonal_mask(size):
-    # Create a 2D tensor with zeros on the diagonal and ones elsewhere
+    # Create a 2D tensor with ones on the diagonal and zeros elsewhere
     diag = torch.eye(size).type(torch.int)
-    mask = diag  # Invert the diagonal: zeros become ones and ones become zeros
+    mask = 1 - diag  # Invert the diagonal: ones become zeros and zeros become ones
     mask = mask.unsqueeze(0)  # Add a singleton dimension at the beginning to get shape (1, size, size)
-    return mask==0 # Directly return mask, without inverting zeros and ones
+    return mask

@@ -247,7 +247,7 @@ def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, 
         # Calculate BLEU score
         bleu = sacrebleu.corpus_bleu(predicted, expected_for_bleu)
         print(f"BLEU score1: {bleu.score:.2f}")
-        print(f"Full report:\n{bleu}")
+        # print(f"Full report:\n{bleu}")
 
     # predicted_tokens = [word_tokenize(sent, language='portuguese') for sent in predicted]
     # expected_tokens = [[word_tokenize(sent, language='portuguese')] for sent in expected]  # Expected references wrapped in another list
