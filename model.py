@@ -7,16 +7,12 @@ class LayerNormalization(nn.Module):
     def __init__(self, features: int, eps:float=10**-6) -> None:
         super().__init__()
         self.eps = eps
-        self.alpha = nn.Parameter(torch.ones(features)) # alpha is a learnable parameter
-        self.bias = nn.Parameter(torch.zeros(features)) # bias is a learnable parameter
+        self.alpha = nn.Parameter(torch.ones(features)) 
+        self.bias = nn.Parameter(torch.zeros(features)) 
 
     def forward(self, x):
-        # x: (batch, seq_len, hidden_size)
-         # Keep the dimension for broadcasting
         mean = x.mean(dim = -1, keepdim = True) # (batch, seq_len, 1)
-        # Keep the dimension for broadcasting
         std = x.std(dim = -1, keepdim = True) # (batch, seq_len, 1)
-        # eps is to prevent dividing by zero or when std is very small
         return self.alpha * (x - mean) / (std + self.eps) + self.bias
 
 class FeedForwardBlock(nn.Module):
@@ -40,8 +36,6 @@ class InputEmbeddings(nn.Module):
         self.embedding = nn.Embedding(vocab_size, d_model)
 
     def forward(self, x):
-        # (batch, seq_len) --> (batch, seq_len, d_model)
-        # Multiply by sqrt(d_model) to scale the embeddings according to the paper
         return self.embedding(x) * math.sqrt(self.d_model)
     
 class PositionalEncoding(nn.Module):
@@ -51,19 +45,12 @@ class PositionalEncoding(nn.Module):
         self.d_model = d_model
         self.seq_len = seq_len
         self.dropout = nn.Dropout(dropout)
-        # Create a matrix of shape (seq_len, d_model)
         pe = torch.zeros(seq_len, d_model)
-        # Create a vector of shape (seq_len)
         position = torch.arange(0, seq_len, dtype=torch.float).unsqueeze(1) # (seq_len, 1)
-        # Create a vector of shape (d_model)
         div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model)) # (d_model / 2)
-        # Apply sine to even indices
         pe[:, 0::2] = torch.sin(position * div_term) # sin(position * (10000 ** (2i / d_model))
-        # Apply cosine to odd indices
         pe[:, 1::2] = torch.cos(position * div_term) # cos(position * (10000 ** (2i / d_model))
-        # Add a batch dimension to the positional encoding
         pe = pe.unsqueeze(0) # (1, seq_len, d_model)
-        # Register the positional encoding as a buffer
         self.register_buffer('pe', pe)
 
     def forward(self, x):
@@ -86,7 +73,6 @@ class MultiHeadAttentionBlock(nn.Module):
         super().__init__()
         self.d_model = d_model # Embedding vector size
         self.h = h # Number of heads
-        # Make sure d_model is divisible by h
         assert d_model % h == 0, "d_model is not divisible by h"
 
         self.d_k = d_model // h # Dimension of vector seen by each head
@@ -99,23 +85,13 @@ class MultiHeadAttentionBlock(nn.Module):
     @staticmethod
     def attention(query, key, value, mask, dropout: nn.Dropout):
         d_k = query.shape[-1]
-        # Just apply the formula from the paper
-        # (batch, h, seq_len, d_k) --> (batch, h, seq_len, seq_len)
         attention_scores = (query @ key.transpose(-2, -1)) / math.sqrt(d_k)
 
-    #    # Set diagonal elements to -1e9
-    #     b_s, h_i, seq_len, _ = attention_scores.size()
-    #     diag_indices = torch.arange(seq_len)
-    #     attention_scores[..., diag_indices, diag_indices] = -1e9
-
         if mask is not None:
-            # Write a very low value (indicating -inf) to the positions where mask == 0
             attention_scores.masked_fill_(mask == 0, -1e9)
         attention_scores = attention_scores.softmax(dim=-1) # (batch, h, seq_len, seq_len) # Apply softmax
         if dropout is not None:
             attention_scores = dropout(attention_scores)
-        # (batch, h, seq_len, seq_len) --> (batch, h, seq_len, d_k)
-        # return attention scores which can be used for visualization
         return (attention_scores @ value), attention_scores
 
     def forward(self, q, k, v, mask):
@@ -131,12 +107,8 @@ class MultiHeadAttentionBlock(nn.Module):
         # Calculate attention
         x, self.attention_scores = MultiHeadAttentionBlock.attention(query, key, value, mask, self.dropout)
         
-        # Combine all the heads together
-        # (batch, h, seq_len, d_k) --> (batch, seq_len, h, d_k) --> (batch, seq_len, d_model)
         x = x.transpose(1, 2).contiguous().view(x.shape[0], -1, self.h * self.d_k)
 
-        # Multiply by Wo
-        # (batch, seq_len, d_model) --> (batch, seq_len, d_model)  
         return self.w_o(x)
 
 class EncoderBlock(nn.Module):
@@ -255,17 +227,13 @@ def build_transformer(src_vocab_size: int, tgt_vocab_size: int, src_seq_len: int
         decoder_block = DecoderBlock(d_model, decoder_self_attention_block, decoder_cross_attention_block, feed_forward_block, dropout)
         decoder_blocks.append(decoder_block)
     
-    # Create the encoder and decoder
     encoder = Encoder(d_model, nn.ModuleList(encoder_blocks))
     decoder = Decoder(d_model, nn.ModuleList(decoder_blocks))
     
-    # Create the projection layer
     projection_layer = ProjectionLayer(d_model, tgt_vocab_size)
     
-    # Create the transformer
     transformer = Transformer(encoder, decoder, src_embed, tgt_embed, src_pos, tgt_pos, projection_layer)
     
-    # Initialize the parameters
     for p in transformer.parameters():
         if p.dim() > 1:
             nn.init.xavier_uniform_(p)
