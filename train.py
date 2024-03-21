@@ -57,7 +57,7 @@ def set_seed(seed_value):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-seed_value = 3
+seed_value = 12
 set_seed(seed_value)
 
 
@@ -149,7 +149,7 @@ def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, 
 
         # Calculate BLEU score
         bleu = sacrebleu.corpus_bleu(predicted, expected_for_bleu)
-        print(f"BLEU score1: {bleu.score:.2f}")
+        print(f"BLEU Score: {bleu.score:.2f}")
 
 def get_all_sentences(ds, lang):
     for item in ds:
