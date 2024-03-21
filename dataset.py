@@ -78,20 +78,12 @@ class BilingualDataset(Dataset):
         return {
             "encoder_input": encoder_input,  # (seq_len)
             "decoder_input": decoder_input,  # (seq_len)
-            "encoder_mask": (encoder_input != self.pad_token).unsqueeze(0).int() & diagonal_mask(encoder_input.size(0)), # (1, seq_len) & (1, seq_len, seq_len)
+            "encoder_mask": (encoder_input != self.pad_token).unsqueeze(0).unsqueeze(0).int(), # (1, 1, seq_len)
             "decoder_mask": (decoder_input != self.pad_token).unsqueeze(0).int() & causal_mask(decoder_input.size(0)), # (1, seq_len) & (1, seq_len, seq_len),
             "label": label,  # (seq_len)
             "src_text": src_text,
             "tgt_text": tgt_text,
-        }
-    
+        }   
 def causal_mask(size):
     mask = torch.triu(torch.ones((1, size, size)), diagonal=0).type(torch.int)
     return mask == 0
-
-def diagonal_mask(size):
-    # Create a 2D tensor with ones on the diagonal and zeros elsewhere
-    diag = torch.eye(size).type(torch.int)
-    mask = 1 - diag  # Invert the diagonal: ones become zeros and zeros become ones
-    mask = mask.unsqueeze(0)  # Add a singleton dimension at the beginning to get shape (1, size, size)
-    return mask
