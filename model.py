@@ -102,13 +102,17 @@ class MultiHeadAttentionBlock(nn.Module):
         # Just apply the formula from the paper
         # (batch, h, seq_len, d_k) --> (batch, h, seq_len, seq_len)
         attention_scores = (query @ key.transpose(-2, -1)) / math.sqrt(d_k)
+
+
+        batch_size, num_heads, seq_len, _ = attention_scores.size()
+        diag_mask = torch.eye(seq_len, device=attention_scores.device).unsqueeze(0).unsqueeze(1)
+        diag_mask = diag_mask.expand(batch_size, num_heads, seq_len, seq_len)  # Expand to match attention_scores size
+        attention_scores = attention_scores.masked_fill(diag_mask == 1, -1e9)  
+
+
         if mask is not None:
             # Write a very low value (indicating -inf) to the positions where mask == 0
             attention_scores.masked_fill_(mask == 0, -1e9)
-        se_len = attention_scores.size(-1)
-        diag_mask = torch.eye(se_len, device=attention_scores.device, dtype=torch.bool)
-        attention_scores = attention_scores.masked_fill(diag_mask, -1e9)    
-        
         attention_scores = attention_scores.softmax(dim=-1) # (batch, h, seq_len, seq_len) # Apply softmax
         if dropout is not None:
             attention_scores = dropout(attention_scores)
