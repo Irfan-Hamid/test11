@@ -103,11 +103,11 @@ class MultiHeadAttentionBlock(nn.Module):
         # (batch, h, seq_len, d_k) --> (batch, h, seq_len, seq_len)
         attention_scores = (query @ key.transpose(-2, -1)) / math.sqrt(d_k)
 
-
-        batch_size, num_heads, seq_len, _ = attention_scores.size()
-        diag_mask = torch.eye(seq_len, device=attention_scores.device).unsqueeze(0).unsqueeze(1)
-        diag_mask = diag_mask.expand(batch_size, num_heads, seq_len, seq_len)  # Expand to match attention_scores size
-        attention_scores = attention_scores.masked_fill(diag_mask == 1, -1e9)  
+       
+       # Set diagonal elements to -1e9
+        b_s, h_i, seq_len, _ = attention_scores.size()
+        diag_indices = torch.arange(seq_len)
+        attention_scores[..., diag_indices, diag_indices] = -1e9
 
 
         if mask is not None:
