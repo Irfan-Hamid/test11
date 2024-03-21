@@ -103,12 +103,10 @@ class MultiHeadAttentionBlock(nn.Module):
         # (batch, h, seq_len, d_k) --> (batch, h, seq_len, seq_len)
         attention_scores = (query @ key.transpose(-2, -1)) / math.sqrt(d_k)
 
-       
-       # Set diagonal elements to -1e9
-        b_s, h_i, seq_len, _ = attention_scores.size()
-        diag_indices = torch.arange(seq_len)
-        attention_scores[..., diag_indices, diag_indices] = -1e9
-
+    #    # Set diagonal elements to -1e9
+    #     b_s, h_i, seq_len, _ = attention_scores.size()
+    #     diag_indices = torch.arange(seq_len)
+    #     attention_scores[..., diag_indices, diag_indices] = -1e9
 
         if mask is not None:
             # Write a very low value (indicating -inf) to the positions where mask == 0
