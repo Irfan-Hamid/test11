@@ -57,7 +57,7 @@ def set_seed(seed_value):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-seed_value = 12
+seed_value = 3
 set_seed(seed_value)
 
 
@@ -272,8 +272,8 @@ def train_model(config):
 
             global_step += 1
         
-        if epoch == 49:
-            run_validation(model, val_dataloader, tokenizer_src, tokenizer_tgt, config['seq_len'], device, lambda msg: batch_iterator.write(msg), global_step, writer)
+        
+        run_validation(model, val_dataloader, tokenizer_src, tokenizer_tgt, config['seq_len'], device, lambda msg: batch_iterator.write(msg), global_step, writer)
 
         model_filename = get_weights_file_path(config, f"{epoch:02d}")
         torch.save({
