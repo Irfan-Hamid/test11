@@ -103,9 +103,6 @@ def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, 
     expected = []
     predicted = []
 
-    indices_to_print = [0, len(validation_ds) - 1]
-    counter = 0 
-
     try:
         # get the console window width
         with os.popen('stty size', 'r') as console:
@@ -133,23 +130,11 @@ def run_validation(model, validation_ds, tokenizer_src, tokenizer_tgt, max_len, 
             expected.append(target_text)
             predicted.append(model_out_text)
             
-            if counter in indices_to_print:
-                print_msg('-' * console_width)
-                print_msg(f"Validation Example {counter + 1}")
-                print_msg(f"{f'SOURCE: ':>12}{source_text}")
-                print_msg(f"{f'TARGET: ':>12}{target_text}")
-                print_msg(f"{f'PREDICTED: ':>12}{model_out_text}")
-                print_msg('-' * console_width)
-
-            counter += 1  # Increment the manual counter
-
-    if writer:
-        # For BLEU Score, wrap each target sentence in a list
-        expected_for_bleu = [[exp] for exp in expected]
+    expected_for_bleu = [[exp] for exp in expected]
 
         # Calculate BLEU score
-        bleu = sacrebleu.corpus_bleu(predicted, expected_for_bleu)
-        print(f"BLEU Score: {bleu.score:.2f}")
+    bleu = sacrebleu.corpus_bleu(predicted, expected_for_bleu)
+    print(f"BLEU Score: {bleu.score:.2f}")
 
 def get_all_sentences(ds, lang):
     for item in ds:
@@ -272,8 +257,9 @@ def train_model(config):
 
             global_step += 1
         
-        
-        run_validation(model, val_dataloader, tokenizer_src, tokenizer_tgt, config['seq_len'], device, lambda msg: batch_iterator.write(msg), global_step, writer)
+        if epoch == config['num_epochs'] - 1:
+            
+            run_validation(model, val_dataloader, tokenizer_src, tokenizer_tgt, config['seq_len'], device, lambda msg: batch_iterator.write(msg), global_step, writer)
 
         model_filename = get_weights_file_path(config, f"{epoch:02d}")
         torch.save({
